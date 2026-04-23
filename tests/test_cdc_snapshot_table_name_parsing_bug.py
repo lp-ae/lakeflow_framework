@@ -2,6 +2,7 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+import pytest
 from unittest.mock import MagicMock, patch
 
 
@@ -70,7 +71,7 @@ def _load_cdc_snapshot_module():
 
 
 def test_historical_table_source_two_part_identifiers():
-    # Tests to ensure two part identifiers are
+    # Tests to ensure two part identifiers are correctly handled
     mod = _load_cdc_snapshot_module()
     source_delta = MagicMock()
     source_delta.return_value.read_source.return_value = object()
@@ -99,3 +100,94 @@ def test_historical_table_source_two_part_identifiers():
     kwargs = source_delta.call_args.kwargs
     assert kwargs["database"] == "test_catalog.staging"
     assert kwargs["table"] == "customer"
+
+def test_historical_table_source_three_part_identifiers():
+    # Tests to ensure three part identifiers are correctly handled
+    mod = _load_cdc_snapshot_module()
+    source_delta = MagicMock()
+    source_delta.return_value.read_source.return_value = object()
+    mod.SourceDelta = source_delta
+
+    settings = mod.CDCSnapshotSettings(
+        keys=["id"],
+        scd_type="1",
+        snapshotType=mod.CDCSnapshotTypes.HISTORICAL,
+        sourceType=mod.CDCSnapshotSourceTypes.TABLE,
+        source={
+            "table": "test_catalog.staging.customer",
+            "versionColumn": "version_col",
+            "versionType": mod.CDCSnapshotVersionTypes.INTEGER,
+        },
+    )
+    flow = mod.CDCSnapshotFlow(settings)
+
+    class _DummyDataflowConfig:
+        features = {}
+
+    version_info = mod.VersionInfo(raw_value=1, version_type=mod.CDCSnapshotVersionTypes.INTEGER)
+
+    flow._read_snapshot_dataframe(version_info, _DummyDataflowConfig())
+
+    kwargs = source_delta.call_args.kwargs
+    assert kwargs["database"] == "test_catalog.staging"
+    assert kwargs["table"] == "customer"
+
+def test_historical_table_source_single_part_identifiers():
+    # Tests to ensure 1 part identifiers correctly fail
+    mod = _load_cdc_snapshot_module()
+    source_delta = MagicMock()
+    source_delta.return_value.read_source.return_value = object()
+    mod.SourceDelta = source_delta
+
+    settings = mod.CDCSnapshotSettings(
+        keys=["id"],
+        scd_type="1",
+        snapshotType=mod.CDCSnapshotTypes.HISTORICAL,
+        sourceType=mod.CDCSnapshotSourceTypes.TABLE,
+        source={
+            "table": "table",
+            "versionColumn": "version_col",
+            "versionType": mod.CDCSnapshotVersionTypes.INTEGER,
+        },
+    )
+    flow = mod.CDCSnapshotFlow(settings)
+
+    class _DummyDataflowConfig:
+        features = {}
+
+    version_info = mod.VersionInfo(raw_value=1, version_type=mod.CDCSnapshotVersionTypes.INTEGER)
+
+    with pytest.raises(ValueError, match="Invalid table name format"):
+        flow._read_snapshot_dataframe(version_info, _DummyDataflowConfig())
+
+    source_delta.assert_not_called()
+
+def test_historical_table_source_multi_part_identifiers():
+    # Tests to ensure multi (more than 3) part identifiers correctly fail
+    mod = _load_cdc_snapshot_module()
+    source_delta = MagicMock()
+    source_delta.return_value.read_source.return_value = object()
+    mod.SourceDelta = source_delta
+
+    settings = mod.CDCSnapshotSettings(
+        keys=["id"],
+        scd_type="1",
+        snapshotType=mod.CDCSnapshotTypes.HISTORICAL,
+        sourceType=mod.CDCSnapshotSourceTypes.TABLE,
+        source={
+            "table": "this.is.too.long",
+            "versionColumn": "version_col",
+            "versionType": mod.CDCSnapshotVersionTypes.INTEGER,
+        },
+    )
+    flow = mod.CDCSnapshotFlow(settings)
+
+    class _DummyDataflowConfig:
+        features = {}
+
+    version_info = mod.VersionInfo(raw_value=1, version_type=mod.CDCSnapshotVersionTypes.INTEGER)
+
+    with pytest.raises(ValueError, match="Invalid table name format"):
+        flow._read_snapshot_dataframe(version_info, _DummyDataflowConfig())
+
+    source_delta.assert_not_called()
