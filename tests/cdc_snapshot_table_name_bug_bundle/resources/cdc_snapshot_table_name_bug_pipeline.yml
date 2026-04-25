@@ -1,0 +1,19 @@
+resources:
+  pipelines:
+    cdc_snapshot_table_name_bug_pipeline:
+      name: ${var.catalog}_cdc_snapshot_table_name_bug_pipeline
+      channel: CURRENT
+      serverless: true
+      continuous: false
+      catalog: ${var.catalog}
+      target: ${var.schema}
+      libraries:
+        - notebook:
+            path: ${var.framework_source_path}/dlt_pipeline
+      configuration:
+        bundle.sourcePath: ${workspace.file_path}/src
+        bundle.target: ${bundle.target}
+        framework.sourcePath: ${var.framework_source_path}
+        pipeline.layer: ${var.layer}
+        workspace.host: ${var.workspace_host}
+        logLevel: DEBUG

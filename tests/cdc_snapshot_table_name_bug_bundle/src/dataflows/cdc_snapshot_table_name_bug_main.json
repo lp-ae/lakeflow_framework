@@ -1,0 +1,24 @@
+{
+  "dataFlowId": "cdc_snapshot_table_name_bug",
+  "dataFlowGroup": "repro",
+  "dataFlowType": "standard",
+  "targetFormat": "delta",
+  "targetDetails": {
+    "table": "cdc_snapshot_table_name_bug_target",
+    "tableProperties": {
+      "delta.enableChangeDataFeed": "true"
+    },
+    "configFlags": ["disableOperationalMetadata"]
+  },
+  "cdcSnapshotSettings": {
+    "keys": ["CUSTOMER_ID"],
+    "scd_type": "1",
+    "snapshotType": "historical",
+    "sourceType": "table",
+    "source": {
+      "table": "bug_repro.customer_historical_snapshot_source",
+      "versionColumn": "LOAD_VERSION",
+      "versionType": "integer"
+    }
+  }
+}

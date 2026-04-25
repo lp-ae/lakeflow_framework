@@ -1,0 +1,31 @@
+bundle:
+  name: cdc_snapshot_table_name_bug_bundle
+
+include:
+  - resources/*.yml
+
+variables:
+  owner:
+    description: The owner of the bundle
+    default: ${workspace.current_user.userName}
+  catalog:
+    description: Target UC catalog
+    default: dev
+  schema:
+    description: Target UC schema for pipeline output
+    default: bug_repro
+  workspace_host:
+    description: Workspace URL used by the framework (https://<workspace-host>)
+  layer:
+    description: Pipeline layer for operational metadata schema selection
+    default: dev
+  framework_source_path:
+    description: Workspace path to framework src folder
+
+targets:
+  dev:
+    mode: development
+    default: true
+    variables:
+      framework_source_path: /Workspace/Users/${var.owner}/.bundle/lakeflow_framework/dev/current/files/src
+      workspace_host: https://adb-7880507463934586.6.azuredatabricks.net/
